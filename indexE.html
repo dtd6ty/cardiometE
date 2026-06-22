@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CardioMet — CAD Subtype Metabolic Classifier (Ridge Model)</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+            crossorigin="anonymous">
+    </script>
+
+    <style>
+        :root {
+            --primary: #0055A4;
+            --primary-light: #e8f0fe;
+            --primary-dark: #003d7a;
+            --danger: #d93025;
+            --danger-bg: #fce8e6;
+            --success: #1b8a3d;
+            --warning: #e6a817;
+            --warning-bg: #fef7e0;
+            --gray-50: #f8f9fa;
+            --gray-100: #f1f3f4;
+            --gray-200: #e9ecef;
+            --gray-300: #dadce0;
+            --gray-600: #5f6368;
+            --white: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+            --radius-sm: 10px;
+            --radius: 16px;
+            --transition: 0.25s ease;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{
+            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+            background:linear-gradient(160deg,#eef4fb 0%,#e1ecf8 40%,#f0f5fa 100%);
+            color:#1a1a1a;line-height:1.6;min-height:100vh;padding:24px 10px 40px;
+        }
+        .disclaimer{
+            background:#fff3cd;color:#856404;text-align:center;padding:10px 20px;
+            border-radius:8px;margin-bottom:20px;font-size:0.803rem;max-width:1200px;
+            margin-left:auto;margin-right:auto;box-shadow:var(--shadow-sm);border-left:4px solid var(--warning);
+        }
+        .container{max-width:1200px;margin:0 auto}
+        .grid-2-unequal{
+            display:grid;grid-template-columns:1fr 1fr;gap:20px;
+        }
+        .card{
+            background:var(--white);border-radius:var(--radius);padding:24px;
+            box-shadow:var(--shadow);margin-bottom:0;
+        }
+        .card h3{
+            color:var(--primary);margin-bottom:18px;font-size:1.15rem;
+            padding-bottom:10px;border-bottom:2px solid var(--primary-light);
+            display:flex;align-items:center;gap:8px;
+        }
+        .card h4{color:var(--primary-dark);font-size:.95rem;margin-bottom:10px;margin-top:16px}
+        .card h4:first-of-type{margin-top:0}
+
+        .metabolic-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 12px}
+
+        .form-group{margin-bottom:16px}
+        .form-group label{
+            display:block;font-size:.8rem;font-weight:600;color:#333;
+            margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .form-group input,.form-group select{
+            width:100%;padding:10px 14px;border:1.5px solid var(--gray-300);
+            border-radius:var(--radius-sm);font-size:.93rem;transition:var(--transition);
+            background:var(--gray-50);
+        }
+        .form-group input:focus,.form-group select:focus{
+            outline:none;border-color:var(--primary);
+            box-shadow:0 0 0 3px rgba(0,85,164,0.12);background:white;
+        }
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+        .btn{
+            display:inline-block;background:var(--primary);color:white;border:none;
+            padding:12px 24px;border-radius:12px;font-size:.93rem;font-weight:600;
+            cursor:pointer;transition:var(--transition);text-align:center;
+        }
+        .btn:hover{background:#004080;transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,85,164,0.35)}
+        .btn-block{width:100%}
+
+        .result-box{
+            margin-top:16px;padding:18px;border-radius:var(--radius-sm);
+            text-align:center;font-weight:600;font-size:.95rem;
+        }
+        .result-box.primary{
+            background:var(--primary-light);color:var(--primary-dark);border:1px solid #b8d4f0;
+        }
+        .badge-outline{
+            display:inline-block;font-size:.72rem;background:#f0f0f0;color:#666;
+            padding:3px 8px;border-radius:4px;margin-left:6px;font-weight:400;
+        }
+        .chart-container-sm{position:relative;height:315px;width:100%}
+
+        @media(max-width:800px){
+            .grid-2-unequal{grid-template-columns:1fr}
+            .metabolic-grid{grid-template-columns:1fr 1fr}
+        }
+        @media(max-width:480px){
+            .form-row,.metabolic-grid{grid-template-columns:1fr}
+            .card{padding:16px}
+        }
+    </style>
+</head>
+<body>
+
+    <div class="disclaimer">
+        ⚕️ <strong>This tool is for research purposes only and does not constitute clinical decision support.</strong>
+        A CAD subtype clustering prediction model based on metabolic biomarkers (CardioMet Ridge Regression).
+    </div>
+
+    <div class="container">
+        <div class="grid-2-unequal">
+
+            <!-- Left: Input Panel -->
+            <div class="card">
+                <h3>🧬 CardioMet-CAD Subtype Classifier <span class="badge-outline">Ridge</span></h3>
+                <p style="font-size:0.82rem;color:var(--gray-600);margin-bottom:16px;">
+                    CAD subtype prediction based on Ridge multinomial classification model. Enter the following indicators for risk assessment.
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Age (years)</label>
+                        <input type="number" id="cm_age" min="18" max="120" placeholder="62" value="62">
+                    </div>
+                    <div class="form-group">
+                        <label>Sex</label>
+                        <select id="cm_sex">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                </div>
+                <h4>📐 Metabolic Indicators</h4>
+                <div class="metabolic-grid">
+                    <div class="form-group">
+                        <label>FBG (mmol/L)</label>
+                        <input type="number" id="cm_fbg" step="0.1" min="3" max="20" placeholder="5.6" value="5.6">
+                    </div>
+                    <div class="form-group">
+                        <label>SBP (mmHg)</label>
+                        <input type="number" id="cm_sbp" min="70" max="250" placeholder="130" value="130">
+                    </div>
+                    <div class="form-group">
+                        <label>DBP (mmHg)</label>
+                        <input type="number" id="cm_dbp" min="40" max="150" placeholder="85" value="85">
+                    </div>
+                    <div class="form-group">
+                        <label>eGFR (mL/min/1.73m²)</label>
+                        <input type="number" id="cm_egfr" min="5" max="150" placeholder="80" value="80">
+                    </div>
+                    <div class="form-group">
+                        <label>TG (mmol/L)</label>
+                        <input type="number" id="cm_tg" step="0.1" min="0.3" max="15" placeholder="2.3" value="2.3">
+                    </div>
+                    <div class="form-group">
+                        <label>BMI (kg/m²)</label>
+                        <input type="number" id="cm_bmi" step="0.1" min="15" max="60" placeholder="25.0" value="25.0">
+                    </div>
+                </div>
+                <button class="btn btn-block" onclick="predictCluster()" style="margin-top:12px;">
+                    🔬 Run Prediction
+                </button>
+            </div>
+
+            <!-- Right: Prediction Results -->
+            <div class="card">
+                <h3>📈 Cluster Prediction Results</h3>
+                <div id="predictionDisplay">
+                    <div class="result-box primary">
+                        <strong>Please click "Run Prediction"</strong>
+                    </div>
+                </div>
+
+                <div class="chart-container-sm" style="margin-top:12px;">
+                    <canvas id="clusterChart"></canvas>
+                </div>
+                
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // =====================================================
+        // 🧬 CardioMet Ridge Regression Model Parameters (from R glmnet)
+        // Training date: 2026-04-16
+        // =====================================================
+
+        // Variable order: FBG, SBP, DBP, eGFR, TG, BMI
+        const VARS = ["FBG", "SBP", "DBP", "eGFR", "TG", "BMI"];
+
+        // Standardization parameters (center confirmed as floating-point zero ~1e-15, hence omitted; scale verified against R .rds)
+        const SCALE = { FBG: 2.398623, SBP: 18.795520, DBP: 11.662964, eGFR: 14.797940, TG: 1.056237,
+        BMI: 3.127758 };
+
+        // Adjustment model: linear coefficients of each metabolic variable ~ sex + age (✅ verified)
+        const ADJUST = {
+            FBG: { intercept: 5.86636774, sex: 0.07710406, age: 0.00450430 },
+            SBP: { intercept: 118.6669739, sex: 2.9797760, age: 0.1873061 },
+            DBP: { intercept: 93.4149071, sex: -0.8789321, age: -0.2549368 },
+            eGFR: { intercept: 126.1876130, sex: 13.0952965, age: -0.8527355 },
+            TG: { intercept: 2.62008049, sex: 0.13680066, age: -0.01864292 },
+            BMI: { intercept: 30.46583428, sex: -0.18165567, age: -0.07259015 }
+        };
+
+        // Ridge model coefficients (4 classes × 7 parameters: intercept + 6 metabolic variables) (✅ verified)
+        const RIDGE_COEF = {
+            MH: { intercept: 4.175313, FBG: -3.111170, SBP: -3.795522, DBP: -3.565924, eGFR: 3.104532,
+            TG: -1.992770, BMI: -2.255173 },
+            HG: { intercept: -5.2067175, FBG: 8.3151778, SBP: 0.2116864, DBP: 0.1482417, eGFR: 1.8224195,
+                TG: 4.0755854, BMI: 0.2804512 },
+            HT: { intercept: 3.4573591, FBG: -2.8000801, SBP: 3.8464759, DBP: 4.0959320, eGFR: 2.9767758,
+            TG: -1.2914132, BMI: 0.9084103 },
+            RI: { intercept: -2.4259545, FBG: -1.9039275, SBP: -0.2626408, DBP: -0.6782495, eGFR: -8.4037272,
+                TG: -0.2914019, BMI: 0.5663119 }
+        };
+
+        // Subtype display names
+        const CLUSTER_NAMES = {
+            MH: "Metabolically Healthy (MH)",
+            HG: "Hyperglycemic (HG)",
+            HT: "Hypertensive (HT)",
+            RI: "Renal Impaired (RI)"
+        };
+
+        // Subtype descriptions (short version)
+        // Shared constants
+        const CLASSES = ["MH", "HG", "HT", "RI"];
+        const DEFAULTS = { age: 62, FBG: 5.6, SBP: 130, DBP: 85, eGFR: 80, TG: 2.3, BMI: 25.0 };
+
+        // ==================== Core Prediction Function ====================
+        function predictCluster() {
+            // ---------- Step 0: Read inputs ----------
+            const sex_str = document.getElementById("cm_sex").value;
+            // Sex encoding: Male=1, Female=2 (verified against R training data)
+            const sex = (sex_str === "Male") ? 1 : 2;
+            const age = parseInt(document.getElementById("cm_age").value, 10) || DEFAULTS.age;
+            const raw = {
+                FBG: parseFloat(document.getElementById("cm_fbg").value) || DEFAULTS.FBG,
+                SBP: parseInt(document.getElementById("cm_sbp").value, 10) || DEFAULTS.SBP,
+                DBP: parseInt(document.getElementById("cm_dbp").value, 10) || DEFAULTS.DBP,
+                eGFR: parseFloat(document.getElementById("cm_egfr").value) || DEFAULTS.eGFR,
+                TG: parseFloat(document.getElementById("cm_tg").value) || DEFAULTS.TG,
+                BMI: parseFloat(document.getElementById("cm_bmi").value) || DEFAULTS.BMI
+            };
+
+            // ---------- Step 1: Compute adjusted residuals + Step 2: Standardize (combined in one loop) ----------
+            const scaled = {};
+            for (const v of VARS) {
+                const adj = ADJUST[v];
+                const predicted = adj.intercept + adj.sex * sex + adj.age * age;
+                const resid = raw[v] - predicted;
+                scaled[v] = resid / SCALE[v];
+            }
+
+            // ---------- Step 3: Ridge linear prediction + Softmax ----------
+            const scores = {};
+            for (const cls of CLASSES) {
+                const coef = RIDGE_COEF[cls];
+                let score = coef.intercept;
+                for (const v of VARS) {
+                    score += coef[v] * scaled[v];
+                }
+                scores[cls] = score;
+            }
+
+            // Softmax to probabilities (numerically stable: subtract max to prevent overflow)
+            const maxScore = Math.max(...Object.values(scores));
+            let expSum = 0;
+            const probsRaw = {};
+            for (const cls of CLASSES) {
+                probsRaw[cls] = Math.exp(scores[cls] - maxScore);
+                expSum += probsRaw[cls];
+            }
+
+            // Round to percentages, distribute rounding error to the highest-probability class (instead of fixed MH)
+            const probs = {};
+            for (const cls of CLASSES) {
+                probs[cls] = Math.round((probsRaw[cls] / expSum) * 100);
+            }
+            const probSum = Object.values(probs).reduce((a, b) => a + b, 0);
+            if (probSum !== 100) {
+                // Assign rounding error to the highest-probability class
+                const adjustCls = CLASSES.reduce((a, b) => probs[a] >= probs[b] ? a : b);
+                probs[adjustCls] += (100 - probSum);
+            }
+
+            // Highest-probability class (using >= so ties predictably select the latter)
+            const predicted = CLASSES.reduce((a, b) => probs[a] >= probs[b] ? a : b);
+
+            // ---------- Step 4: Update UI ----------
+            document.getElementById("predictionDisplay").innerHTML =
+                '<div class="result-box primary"><strong>Predicted Subtype: ' + CLUSTER_NAMES[predicted] +
+                '</strong></div>';
+
+            // Render Chart.js bar chart
+            try {
+                renderClusterChart(probs, predicted);
+            } catch (e) {
+                console.error("Chart render failed:", e);
+            }
+        }
+
+        // ==================== Chart.js Bar Chart ====================
+        let clusterChart = null;
+
+        // Shared chart configuration
+        const CHART_OPTIONS = {
+            responsive: true, maintainAspectRatio: false, indexAxis: "y",
+            plugins: { legend: { display: false } },
+            layout: { padding: { right: 45 } },
+            scales: {
+                x: {
+                    min: 0, max: 100,
+                    ticks: { callback: v => v + "%" },
+                    grid: { color: "#e8e8e8" }
+                }
+            }
+        };
+
+        // Percentage label plugin (module-level, reads values from chart.data to avoid closure capture)
+        const pctPlugin = {
+            id: "pctLabels",
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                const meta = chart.getDatasetMeta(0);
+                const ds = chart.data.datasets[0];
+                if (!ds || !meta.data) return;
+                ctx.save();
+                ctx.font = "bold 12px -apple-system, sans-serif";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#333";
+                ctx.textAlign = "left";
+                meta.data.forEach((bar, i) => {
+                    const v = ds.data[i];
+                    if (v > 0) {
+                        ctx.fillText(v + "%", bar.x + 6, bar.y);
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
+        function renderClusterChart(probs, predicted) {
+            if (typeof Chart === "undefined") {
+                console.warn("Chart.js not loaded, unable to render chart");
+                return;
+            }
+            const ctx = document.getElementById("clusterChart");
+            if (!ctx) return;
+
+            const labels = CLASSES.map(c => CLUSTER_NAMES[c]);
+            const values = probs ? CLASSES.map(c => probs[c]) : [0, 0, 0, 0];
+            const bgColors = probs
+                ? CLASSES.map(c => c === predicted ? "#0055A4" : "#b0c4de")
+                : "#e0e0e0";
+
+            if (clusterChart) {
+                // Reuse existing instance: update data in-place and redraw
+                clusterChart.data.labels = labels;
+                clusterChart.data.datasets[0].data = values;
+                clusterChart.data.datasets[0].backgroundColor = bgColors;
+                clusterChart.update();
+            } else {
+                // First-time creation
+                clusterChart = new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels: labels,
+                        datasets: [{ data: values, backgroundColor: bgColors, borderRadius: 6 }]
+                    },
+                    options: CHART_OPTIONS,
+                    plugins: [pctPlugin]
+                });
+            }
+        }
+
+        // Draw empty chart placeholder on page load
+        document.addEventListener("DOMContentLoaded", () => {
+            try {
+                renderClusterChart(null, null);
+            } catch (e) {
+                console.error("Initial chart render failed:", e);
+            }
+        });
+    </script>
+</body>
+</html>
